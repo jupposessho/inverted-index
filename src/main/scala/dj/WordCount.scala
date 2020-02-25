@@ -20,7 +20,7 @@ sbt "runMain [PACKAGE].WordCount
 
 object WordCount {
 
-  final case class DictionaryItem(id: Int, word: String)
+  final case class DictionaryItem(word: String, id: Int)
 
   def main(cmdlineArgs: Array[String]): Unit = {
     val (sc, args) = ContextAndArgs(cmdlineArgs)
@@ -47,16 +47,19 @@ object WordCount {
     ()
   }
 
-  private def loadDictionary(path: String, sc: ScioContext): SCollection[DictionaryItem] = {
+  private def loadDictionary(path: String, sc: ScioContext): SCollection[(String, Int)] = {
     sc.textFile(path)
       .map { line =>
         val pair = line.split(" ")
-        DictionaryItem(pair(1).toInt, pair(0)) // TODO error handling - toInt, indices
+        pair(0) -> pair(1).toInt // TODO error handling - toInt, indices
       }
   }
 
-  private def mergeWithDictionary(words: SCollection[(String, String)], dictionaryItems: SCollection[DictionaryItem]) = {
-    dictionaryItems
+  private def mergeWithDictionary(words: SCollection[(String, String)], dictionaryItems: SCollection[(String, Int)]) = {
+    words
+      .join(dictionaryItems)
+      .map { case (_, (docId, wordId)) => wordId -> docId }
+      .distinct // TODO do this before join
   }
 
   private def createDictionary(input: SCollection[String]) = {
