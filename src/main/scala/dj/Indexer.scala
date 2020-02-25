@@ -5,43 +5,27 @@ import java.nio.channels.Channels
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import org.apache.beam.sdk.io.FileSystems
-import org.apache.beam.sdk.io.fs.EmptyMatchTreatment
-import org.apache.beam.sdk.io.fs.MatchResult.Metadata
 
 import scala.io.Source
 import scala.collection.JavaConverters._
+import scala.collection.SortedSet
+import dj.index.IndexUtils._
 
-/*
-sbt "runMain [PACKAGE].WordCount
-  --project=[PROJECT] --runner=DataflowRunner --zone=[ZONE]
-  --input=gs://dataflow-samples/shakespeare/kinglear.txt
-  --output=gs://[BUCKET]/[PATH]/wordcount"
-*/
-
-object WordCount {
-
-  final case class DictionaryItem(word: String, id: Int)
+object Indexer {
 
   def main(cmdlineArgs: Array[String]): Unit = {
     val (sc, args) = ContextAndArgs(cmdlineArgs)
 
-    val path = "data/dj2/*"
-    val dictionaryPath = "data/dictionary/part-00000-of-00001.txt"
-    val input = args.getOrElse("input", path)
-    val output = args("output")
+    val defaultDocumentPath = "data/documents/*"
+    val defaultDictionaryPath = "data/dictionary/part-00000-of-00001.txt"
+    val output = args.getOrElse("output", "index")
+    val dictionaryPath = args.getOrElse("dictionary", defaultDictionaryPath)
 
     val  dictionary = loadDictionary(dictionaryPath, sc)
-    val inputs = wordsWithFileName(args.getOrElse("input", path), sc)
+    val inputs = wordsWithFileName(args.getOrElse("input", defaultDocumentPath), sc)
 
-      mergeWithDictionary(inputs, dictionary)
-//    inputs
-//    dictionary
-      .map(println)
+    mergeWithDictionary(inputs, dictionary)
       .saveAsTextFile(output, 1)
-
-    ///////////////////////////////////////////
-//    createDictionary(sc.textFile(input))
-//      .saveAsTextFile("dictionary", 1)
 
     sc.run().waitUntilFinish()
     ()
@@ -59,22 +43,9 @@ object WordCount {
     words
       .join(dictionaryItems)
       .map { case (_, (docId, wordId)) => wordId -> docId }
-      .distinct // TODO do this before join
-  }
-
-  private def createDictionary(input: SCollection[String]) = {
-    input
-      .map(_.trim)
-      .flatMap(lineToWords)
       .distinct
-      .map(a => s"$a ${a.hashCode}")
-  }
-
-  private def lineToWords(line: String): Array[String] = {
-    line
-      .split("[^a-zA-Z']+")
-      .filter(_.nonEmpty)
-      .map(_.toLowerCase)
+      .aggregateByKey(SortedSet[String]())(_ + _, _ ++ _)
+      .map(e => s"${e._1} [${e._2.mkString(",")}]")
   }
 
   private def wordsWithFileName(inputPath: String, sc: ScioContext) = {
