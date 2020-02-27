@@ -1,6 +1,6 @@
-package dj.index
+package com.dowjones.indexer
 
-object IndexUtils {
+object IndexerUtils {
 
   def lineToWords(line: String): Array[String] = {
     line

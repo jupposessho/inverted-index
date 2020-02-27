@@ -1,51 +1,55 @@
-# dj
+# DNA Challenge
 
-## Raison d'être:
+## API
 
-TODO: your project description
+The API has a single endpoint: /v1/resolver/words/:word and returns the document ids where the given word appears.
+It supposed to work from the output file of the indexer but in real world I would store that data in a NoSql database(Cassandra) and serve the resolution request from there for the following reasons:
+- if we load the data before the server starts, we won't not able to respond to requests during the data load - availability issue
+- if we load the data on the first request and cache it, the first request would be very slow or even times out - responsive issue
 
-## Features:
+The solution does not contain database interaction(hard coded values inside repositories), however it contains an example for resource(and configuration) handling in a functional way(Postgres connection)
 
-This project comes with number of preconfigured features, including:
+To run the server:
 
-### sbt-pack
+```
+sbt "runMain com.dowjones.Main"
+```
 
-Use `sbt-pack` instead of `sbt-assembly` to:
- * reduce build time
- * enable efficient dependency caching
- * reduce job submission time
+Request example:
 
+```
+curl http://0.0.0.0:8080/v1/resolver/words/the
+```
+
+Expected output:
+
+```
+["0","2","12"]
+```
+
+## Jobs
 To build package run:
 
 ```
 sbt pack
 ```
 
+To run the dictionary creation job:
+
+```
+target/pack/bin/dictionary --output=dic
+```
+
+To run the indexer job:
+
+```
+target/pack/bin/indexer --output=out
+```
+
 ### Testing
 
-This template comes with an example of a test, to run tests:
+To run tests:
 
 ```
 sbt test
 ```
-
-### Scala style
-
-Find style configuration in `scalastyle-config.xml`. To enforce style run:
-
-```
-sbt scalastyle
-```
-
-### REPL
-
-To experiment with current codebase in [Scio REPL](https://github.com/spotify/scio/wiki/Scio-REPL)
-simply:
-
-```
-sbt repl/run
-```
-
----
-
-This project is based on the [scio.g8](https://github.com/spotify/scio.g8).

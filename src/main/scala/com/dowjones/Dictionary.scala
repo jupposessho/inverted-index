@@ -1,8 +1,8 @@
-package dj
+package com.dowjones
 
+import com.dowjones.indexer.IndexerUtils._
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
-import dj.index.IndexUtils._
 
 object Dictionary {
 
@@ -13,8 +13,9 @@ object Dictionary {
     val input = args.getOrElse("input", path)
     val output = args.getOrElse("output", "dictionary")
 
-    createDictionary(sc.textFile(input), {a: String => a.hashCode})
-      .saveAsTextFile(output, 1)
+    createDictionary(sc.textFile(input), { a: String =>
+      a.hashCode
+    }).saveAsTextFile(output, 1)
 
     sc.run().waitUntilFinish()
     ()

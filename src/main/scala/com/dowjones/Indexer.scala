@@ -1,15 +1,14 @@
-package dj
+package com.dowjones
 
 import java.nio.channels.Channels
 
+import com.dowjones.indexer.IndexerUtils._
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import org.apache.beam.sdk.io.FileSystems
-
-import scala.io.Source
 import scala.collection.JavaConverters._
 import scala.collection.SortedSet
-import dj.index.IndexUtils._
+import scala.io.Source
 
 object Indexer {
 
@@ -21,7 +20,7 @@ object Indexer {
     val output = args.getOrElse("output", "index")
     val dictionaryPath = args.getOrElse("dictionary", defaultDictionaryPath)
 
-    val  dictionary = loadDictionary(dictionaryPath, sc)
+    val dictionary = loadDictionary(dictionaryPath, sc)
     val inputs = wordsWithFileName(args.getOrElse("input", defaultDocumentPath), sc)
 
     mergeWithDictionary(inputs, dictionary)
@@ -55,19 +54,18 @@ object Indexer {
       .asScala
       .map(_.resourceId().toString)
 
-      sc
-        .parallelize(uris)
-        .flatMap { uri =>
-          val resourceId = FileSystems.matchSingleFileSpec(uri).resourceId()
-          val inputStream = Channels.newInputStream(FileSystems.open(resourceId))
+    sc.parallelize(uris)
+      .flatMap { uri =>
+        val resourceId = FileSystems.matchSingleFileSpec(uri).resourceId()
+        val inputStream = Channels.newInputStream(FileSystems.open(resourceId))
 
-          Source
-            .fromInputStream(inputStream)
-            .getLines()
-            .flatMap { line =>
-              lineToWords(line).map(word => word -> fileName(uri))
-            }
-        }
+        Source
+          .fromInputStream(inputStream)
+          .getLines()
+          .flatMap { line =>
+            lineToWords(line).map(word => word -> fileName(uri))
+          }
+      }
   }
 
   private def fileName(uri: String): String = {
